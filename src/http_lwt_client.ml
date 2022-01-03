@@ -96,9 +96,9 @@ type response =
   ; reason  : string
   ; headers : Headers.t }
 
-let pp_response ppf { version ; status ; reason ; headers } =
-  Format.fprintf ppf "((version \"%a\") (status %a) (reason %S) (headers %a))"
-    Version.pp_hum version Status.pp_hum status reason Headers.pp_hum headers
+let pp_response ppf { version ; status ; reason ; _ } =
+  Format.fprintf ppf "((version \"%a\") (status %a) (reason %S)"
+    Version.pp_hum version Status.pp_hum status reason
 
 let single_http_1_1_request ?config fd user_pass host meth path headers body =
   let blen = match body with None -> None | Some x -> Some (String.length x) in

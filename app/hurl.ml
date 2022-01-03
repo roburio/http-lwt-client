@@ -1,4 +1,4 @@
-let jump () protocol uri meth headers output input =
+let jump () protocol uris meth headers _output input =
   let ( let* ) = Result.bind in
   let config = match protocol with
     | None -> None
@@ -15,19 +15,15 @@ let jump () protocol uri meth headers output input =
   let meth = match meth with None -> default_meth | Some x -> x in
   let open Lwt.Infix in
   Lwt_main.run (
-    Http_lwt_client.one_request ?config ~meth ~headers ?body uri >|= function
-    | Ok (resp, body) ->
-      Format.fprintf Format.std_formatter "%a\n%!"
-        Http_lwt_client.pp_response resp;
-      (match body with
-       | None -> Ok ()
-       | Some data ->
-         match output with
-         | None -> Format.fprintf Format.std_formatter "%s\n%!" data ; Ok ()
-         | Some fn -> Bos.OS.File.write (Fpath.v fn) data)
-    | Error `Msg msg as e ->
-      Logs.err (fun m -> m "error %s" msg);
-      e)
+    Lwt_list.iter_p (fun uri ->
+        Http_lwt_client.one_request ?config ~meth ~headers ?body uri >|= function
+        | Ok (resp, _body) ->
+          Format.fprintf Format.std_formatter "%s %a\n%!" uri
+            Http_lwt_client.pp_response resp
+        | Error `Msg msg ->
+          Logs.err (fun m -> m "error to %s: %s" uri msg); exit 2)
+      uris);
+  Ok ()
 
 let setup_log style_renderer level =
   Fmt_tty.setup_std_outputs ?style_renderer ();
@@ -43,7 +39,7 @@ let setup_log =
 
 let uri =
   let doc = "URL to retrieve" in
-  Arg.(required & pos 0 (some string) None & info [] ~doc ~docv:"URL")
+  Arg.(value & pos_all string [] & info [] ~doc ~docv:"URL")
 
 let output =
   let doc = "Save body output to a file" in
